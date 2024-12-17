@@ -2,6 +2,7 @@ import withPlaiceholder from '@plaiceholder/next';
 /**@type{import('next').NextConfig}*/
 const nextConfig = {
   productionBrowserSourceMaps: false,
+  transpilePackages: ['@plaiceholder/next'],
   images: {
     remotePatterns: [
       {
