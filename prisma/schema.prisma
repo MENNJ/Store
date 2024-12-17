@@ -1,0 +1,234 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+}
+
+model Store {
+  id         String      @id @default(uuid())
+  name       String
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  billboards Billboard[] @relation("StoreToBillboard")
+  products   Product[]   @relation("StoreToProduct")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+model Billboard {
+  id        String   @id @default(uuid())
+  storeId   String
+  store     Store    @relation("StoreToBillboard", fields: [storeId], references: [id])
+  label     String
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+model Product {
+  id         String      @id @default(uuid())
+  userId     String
+  storeId    String
+  store      Store       @relation("StoreToProduct", fields: [storeId], references: [id])
+  name       String
+  price      Decimal
+  isFeatured Boolean     @default(false)
+  isArchived Boolean     @default(false)
+  detailed   String      @db.VarChar(512)
+  images     Image[]
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@index([storeId])
+  @@index([userId])
+}
+
+model Image {
+  id        String @id @default(uuid())
+  productId String
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String   @db.VarChar(512)
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  BuyersId   String      @default("")
+  SellerId   String      @default("")
+  storeId    String
+  orderItems OrderItem[]
+  phone      String      @default("")
+  address    String      @default("")
+  Price      Decimal     @default(0)
+  isPaid     Boolean     @default(false)
+  isShip     Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id                    String                 @id @default(cuid())
+  name                  String?
+  username              String?                @unique
+  email                 String?                @unique
+  emailVerified         DateTime?
+  image                 String?
+  bgimage               String?
+  password              String?
+  role                  UserRole               @default(USER)
+  accounts              Account[]
+  isTwoFactorEnabled    Boolean                @default(false)
+  twoFactorConfirmation TwoFactorConfirmation?
+  // Optional for WebAuthn support
+  // Authenticator Authenticator[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  conversations  Conversation[] @relation("ConversationUser1")
+  conversations2 Conversation[] @relation("ConversationUser2")
+  messages       Message[]
+  Product        Product[]
+  stores         Store[]
+}
+
+// 定义一个名为Conversation的模型
+model Conversation {
+  // 定义conversation_id字段，类型为Int，作为主键，默认值为自增
+  conversation_id Int       @id @default(autoincrement())
+  // 定义user1_id字段，类型为String
+  user1_id        String
+  // 定义user2_id字段，类型为String
+  user2_id        String
+  // 定义created_at字段，类型为DateTime，默认值为当前时间
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // 定义user1字段，类型为User，与User模型建立关系，关系名为ConversationUser1，字段为user1_id，引用User模型的id字段
+  user1           User      @relation("ConversationUser1", fields: [user1_id], references: [id])
+  // 定义user2字段，类型为User，与User模型建立关系，关系名为ConversationUser2，字段为user2_id，引用User模型的id字段
+  user2           User      @relation("ConversationUser2", fields: [user2_id], references: [id])
+  // 定义messages字段，类型为Message，与Message模型建立一对多关系
+  messages        Message[]
+}
+
+// 定义一个名为Message的模型
+model Message {
+  // 定义message_id字段，类型为Int，作为主键，默认值为自增
+  message_id      Int          @id @default(autoincrement())
+  // 定义conversation_id字段，类型为Int
+  conversation_id Int
+  // 定义sender_id字段，类型为String
+  sender_id       String
+  // 发送者ID
+  message         String
+  // 消息内容
+  sent_at         DateTime     @default(now())
+  // 发送时间，默认为当前时间
+  conversation    Conversation @relation(fields: [conversation_id], references: [conversation_id])
+  // 对话，与对话表建立关联
+  sender          User         @relation(fields: [sender_id], references: [id])
+  // 发送者，与用户表建立关联
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  // 消息类型 TEXT为文本信息，IMAGE为图片信息
+  type            MessageType  @default(TEXT)
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String  @unique
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorConfirmation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+}
