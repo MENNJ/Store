@@ -1,8 +1,6 @@
-import withPlaiceholder from '@plaiceholder/next';
 /**@type{import('next').NextConfig}*/
 const nextConfig = {
   productionBrowserSourceMaps: false,
-  transpilePackages: ['@plaiceholder/next'],
   images: {
     remotePatterns: [
       {
@@ -49,8 +47,8 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'store.storeimages.cdn-apple.com',
       }
-
     ],
   },
 };
-export default withPlaiceholder(nextConfig)
+
+export default nextConfig;
